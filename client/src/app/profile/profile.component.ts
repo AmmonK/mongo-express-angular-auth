@@ -13,6 +13,7 @@ export class ProfileComponent implements OnInit {
   constructor(private userService: UserService) {}
 
   ngOnInit() {
+    // find the profile for the current user based on their token
     this.userService.getProfile().subscribe(user => (this.user = user));
   }
 }

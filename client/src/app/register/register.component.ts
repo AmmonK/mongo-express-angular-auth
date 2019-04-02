@@ -9,11 +9,15 @@ import { Router } from "@angular/router";
   styleUrls: ["./register.component.css"]
 })
 export class RegisterComponent implements OnInit {
+  // initialize an empty user object
+  // we need to do this so the property binding works [(ngModel)]
   user: User = new User();
+
   constructor(private userService: UserService, private router: Router) {}
+
   register(): void {
-    this.userService.registerUser(this.user).subscribe(user => {
-      console.log(user);
+    this.userService.registerUser(this.user).subscribe(() => {
+      // user registered, send them to the login page
       this.router.navigate(["/login"]);
     });
   }
