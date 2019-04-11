@@ -1,38 +1,19 @@
 const jwt = require("jsonwebtoken");
-const models = require("../models/index");
-const bcrypt = require("bcryptjs");
 
 var authService = {
-  signUser: function(user) {
-    const token = jwt.sign(
-      {
-        username: user.username,
-        userId: user.userId
-      },
-      "secretkey",
-      {
-        expiresIn: "1h"
-      }
-    );
-    return token;
-  },
-  verifyUser: function(token) {
-    //<--- receive JWT token as parameter
-    try {
-      let decoded = jwt.verify(token, "secretkey"); //<--- Decrypt token using same key used to encrypt
-      return models.users.findByPk(decoded.userId); //<--- Return result of database query as promise
-    } catch (err) {
-      console.log(err);
-      return null;
+  verifyUser: function(req, res, next) {
+    let token = req.cookies.jwt;
+    // if we have a cookie we can proceed
+    if (token) {
+      jwt.verify(token, "secretkey", function(err, decoded) {
+        if (err) {
+          res.json({ status: "error", message: err.message, data: null });
+        } else {
+          req.body.userId = decoded.id;
+          next();
+        }
+      });
     }
-  },
-  hashPassword: function(plainTextPassword) {
-    let salt = bcrypt.genSaltSync(10);
-    let hash = bcrypt.hashSync(plainTextPassword, salt);
-    return hash;
-  },
-  comparePasswords: function(plainTextPassword, hashedPassword) {
-    return bcrypt.compareSync(plainTextPassword, hashedPassword);
   }
 };
 

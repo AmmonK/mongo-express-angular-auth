@@ -3,7 +3,7 @@ var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
-var models = require("./models");
+var mongoose = require("mongoose");
 var cors = require("cors");
 
 var indexRouter = require("./routes/index");
@@ -23,8 +23,12 @@ app.use(cors({ origin: "http://localhost:4200", credentials: true }));
 app.use("/", indexRouter);
 app.use("/users", userRouter);
 
-models.sequelize.sync().then(function() {
-  console.log("DB Sync'd up");
-});
+var mongoDB = "mongodb://127.0.0.1/database";
+mongoose.connect(mongoDB, { useNewUrlParser: true });
+mongoose.Promise = global.Promise;
+var db = mongoose.connection;
+db.on("connected", () => console.log(`Mongoose connection open to ${mongoDB}`));
+db.on("disconnected", () => console.log("Mongoose connection disconnected"));
+db.on("error", console.error.bind(console, "Mongoose connection error:"));
 
 module.exports = app;

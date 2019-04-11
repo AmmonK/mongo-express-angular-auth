@@ -1,91 +1,74 @@
 var express = require("express");
 var router = express.Router();
-var models = require("../models"); //<--- Add models
-var authService = require("../services/auth"); //<--- Add authentication service
+var UserModel = require("../models/user");
+var bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const authService = require("../services/auth");
 
 // create new user if one doesn't exist
 // attempt to find the user by their username, then add the rest of the values from the request
 router.post("/signup", function(req, res, next) {
-  models.users
-    .findOrCreate({
-      where: {
-        username: req.body.username
-      },
-      defaults: {
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        password: authService.hashPassword(req.body.password) // encrypt the user password
-      }
-    })
-    .spread(function(result, created) {
-      if (created) {
-        // if the user was created, positive response
-        res.json("User successfully created");
+  console.log(req.body);
+  UserModel.create(
+    {
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      email: req.body.email,
+      username: req.body.username,
+      password: req.body.password
+    },
+    function(err, result) {
+      if (err) {
+        console.log(err);
       } else {
-        // if the user was not created, negative response
-        res.json("This user already exists");
+        res.json("User successfully created");
       }
-    });
+    }
+  );
 });
 
 // login user and return JWT as cookie
 // attempt to find the user by their username, if not found then respond "User not found"
-//
 router.post("/login", function(req, res, next) {
-  models.users
-    .findOne({
-      where: {
-        username: req.body.username
-      }
-    })
-    .then(user => {
-      if (!user) {
-        console.log("User not found");
-        return res.status(401).json("Login Failed");
-      } else {
-        // check to see if the passwords match
-        let passwordMatch = authService.comparePasswords(
-          req.body.password,
-          user.password
+  console.log(req.body);
+  UserModel.findOne({ username: req.body.username }, function(err, userInfo) {
+    if (err) {
+      console.log("ERROR");
+      console.log(err);
+    } else {
+      console.log(userInfo);
+
+      if (
+        userInfo &&
+        bcrypt.compareSync(req.body.password, userInfo.password)
+      ) {
+        let token = jwt.sign(
+          { id: userInfo._id, userName: userInfo.username },
+          "secretkey",
+          { expiresIn: "1h" }
         );
-        if (passwordMatch) {
-          // passwords match, create a jwt token as a cookie and attach to the response
-          let token = authService.signUser(user);
-          res.cookie("jwt", token);
-          res.json("Login successful");
-        } else {
-          // wrong password, negative response
-          console.log("Wrong password");
-          res.json("Wrong password");
-        }
+        res.cookie("jwt", token);
+        res.json("Login successful");
+      } else {
+        res.status(401);
+        console.log("invalid credentials");
+        res.json("invalid credentials");
       }
-    });
+    }
+  });
 });
 
 // find a profile from a user (their user object) based on the received jtw cookie
-router.get("/profile", function(req, res, next) {
+router.get("/profile", authService.verifyUser, function(req, res, next) {
   // read the cookie from the request
-  let token = req.cookies.jwt;
-  // if we have a cookie we can proceed
-  if (token) {
-    // validate the cookie
-    authService.verifyUser(token).then(user => {
-      if (user) {
-        // empty the password field, do not send this property to the front-end
-        user.password = "";
-        // return the user object
-        res.send(JSON.stringify(user));
-      } else {
-        res.status(401);
-        res.json("Invalid authentication token");
-      }
-    });
-  } else {
-    // no jwt cookie, assume user is not logged in
-    res.status(401);
-    res.json("Must be logged in");
-  }
+  UserModel.findById(req.body.userId, function(err, userInfo) {
+    if (err) {
+      console.log(err);
+      res.json("invalid credentials");
+    } else {
+      res.send(userInfo);
+    }
+  });
 });
 
 // logout
@@ -96,24 +79,9 @@ router.get("/logout", function(req, res, next) {
 });
 
 // validate a token
-router.get("/validateToken", function(req, res, next) {
+router.get("/validateToken", authService.verifyUser, function(req, res, next) {
   // check to see if there is a token
-  let token = req.cookies.jwt;
-  if (token) {
-    // validate the user from the token (same as finding profile)
-    authService.verifyUser(token).then(user => {
-      if (user) {
-        // token valid, return true
-        res.json(true);
-      } else {
-        // token invalid, return false
-        res.json(false);
-      }
-    });
-  } else {
-    // no token, return false
-    res.json(false);
-  }
+  res.json(true);
 });
 
 module.exports = router;
