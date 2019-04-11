@@ -18,11 +18,13 @@ app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+// important option to allow credentials
 app.use(cors({ origin: "http://localhost:4200", credentials: true }));
 
 app.use("/", indexRouter);
 app.use("/users", userRouter);
 
+// connect to a local mongodb, chave to URL if hosted database
 var mongoDB = "mongodb://127.0.0.1/database";
 mongoose.connect(mongoDB, { useNewUrlParser: true });
 mongoose.Promise = global.Promise;

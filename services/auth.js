@@ -1,5 +1,12 @@
 const jwt = require("jsonwebtoken");
 
+// middleware method to validate a jwt token
+// add this as a second parameter to any requests that need token validatoin
+
+// router.get("route", authService.verifyUser, function(req,res,next){
+//   authorized work
+// });
+
 var authService = {
   verifyUser: function(req, res, next) {
     let token = req.cookies.jwt;

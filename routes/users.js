@@ -6,7 +6,6 @@ const jwt = require("jsonwebtoken");
 const authService = require("../services/auth");
 
 // create new user if one doesn't exist
-// attempt to find the user by their username, then add the rest of the values from the request
 router.post("/signup", function(req, res, next) {
   console.log(req.body);
   UserModel.create(
@@ -28,7 +27,7 @@ router.post("/signup", function(req, res, next) {
 });
 
 // login user and return JWT as cookie
-// attempt to find the user by their username, if not found then respond "User not found"
+// attempt to find the user by their username, if not found then respond 401 unauthorized
 router.post("/login", function(req, res, next) {
   console.log(req.body);
   UserModel.findOne({ username: req.body.username }, function(err, userInfo) {
@@ -37,7 +36,7 @@ router.post("/login", function(req, res, next) {
       console.log(err);
     } else {
       console.log(userInfo);
-
+      // make sure we found a user, then compare the passwords
       if (
         userInfo &&
         bcrypt.compareSync(req.body.password, userInfo.password)
@@ -50,6 +49,7 @@ router.post("/login", function(req, res, next) {
         res.cookie("jwt", token);
         res.json("Login successful");
       } else {
+        // didn't find the user, or credentials are invalid
         res.status(401);
         console.log("invalid credentials");
         res.json("invalid credentials");
@@ -60,7 +60,8 @@ router.post("/login", function(req, res, next) {
 
 // find a profile from a user (their user object) based on the received jtw cookie
 router.get("/profile", authService.verifyUser, function(req, res, next) {
-  // read the cookie from the request
+  // authService.verifyUser attaches req.body.userId from the jtw cookie if it's valid
+  // find the user by their id
   UserModel.findById(req.body.userId, function(err, userInfo) {
     if (err) {
       console.log(err);
@@ -80,7 +81,8 @@ router.get("/logout", function(req, res, next) {
 
 // validate a token
 router.get("/validateToken", authService.verifyUser, function(req, res, next) {
-  // check to see if there is a token
+  // if there is a token we return true
+  // this only happens if verifyUser is passed successfully (validates token)
   res.json(true);
 });
 
